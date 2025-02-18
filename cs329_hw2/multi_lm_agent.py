@@ -134,14 +134,14 @@ class MultiLMAgent:
 
         ################ CODE ENDS HERE ###############
 
-    def iterative_refine(self, prompt: str, max_iterations: int = 3) -> List[str]:
+    def iterative_refine(self, prompt: str, max_iterations: int = 3) -> str:
         """
         INPUT:
             prompt: str - Input prompt for generation
             max_iterations: int - Maximum number of refinement iterations
             
         OUTPUT:
-            List[str] - List of responses from each iteration, showing progression
+            str - Final refined response
         """
         ################ CODE STARTS HERE ###############
 
