@@ -1,0 +1,8 @@
+LICENSE
+README.md
+setup.py
+cs329_hw2.egg-info/PKG-INFO
+cs329_hw2.egg-info/SOURCES.txt
+cs329_hw2.egg-info/dependency_links.txt
+cs329_hw2.egg-info/requires.txt
+cs329_hw2.egg-info/top_level.txt
