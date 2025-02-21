@@ -143,9 +143,18 @@ class MultiLMAgent:
 
         api_response = self.api_manager.route_query(query)
 
-        enhanced_prompt = self.generate_prompt(query, [api_response])
+        decomposed_queries = [{
+                            "api": api_response.get("api_used", "unknown"),
+                            "params": api_response.get("params", {}),
+                            "results": api_response.get("results", {}),
+                            "status": "success" if api_response.get("results") else "error",
+                            "order": 0,
+                            "purpose": ""
+                        }]
 
-        response = self.generate(enhanced_prompt, model)
+        enhanced_prompt = self.generate_prompt(query, decomposed_queries)
+
+        response = extract_between_tags(self.generate(enhanced_prompt, model), "DIRECT_ANSWER")
 
         return response if response else ""
 
@@ -286,6 +295,7 @@ class MultiLMAgent:
         if decomposed_queries and len(decomposed_queries) > 0:
             for i, result_dict in enumerate(decomposed_queries, 1):
                 prompt += f"\nSource {i}:"
+
                 if result_dict.get("status") == "success":
                     
                     prompt += f"\n- Parameters Used: {json.dumps(result_dict.get('params', {}), indent=2)}"
