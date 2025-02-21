@@ -17,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import openai
 import json
+import re
 
 class DeepResearchAgent(MultiLMAgent):
     def __init__(self, api_manager):
@@ -42,22 +43,18 @@ class DeepResearchAgent(MultiLMAgent):
             - report: str, synthesized findings with citations
             - sources: List[str], list of source URLs or references
         """
-        # Implement research pipeline here
 
-        # Step 1: Break down query into research aspects
         research_plan = self._create_enhanced_research_plan(query)
         
-        # Step 2: Research each section
         section_findings = []
         sources = set()
         
         def process_aspect(aspect):
-            # Research each aspect
             results = self.decompose_query(aspect["sub_query"], optimize_query_flag=True)
             processed = self._process_research_results(results, aspect["focus"])
             
             return {
-                "section": aspect["focus"],  # Use focus as section title
+                "section": aspect["focus"],
                 "findings": [{
                     "aspect": aspect["focus"],
                     "findings": processed["findings"],
@@ -74,7 +71,6 @@ class DeepResearchAgent(MultiLMAgent):
                 section_findings.append(result)
                 sources.update(result["sources"])
     
-        # Step 3: Generate comprehensive report
         report = self._generate_structured_report(query, section_findings, research_plan)
 
         sources_section = report.split("## References")[-1].strip()
@@ -96,7 +92,6 @@ class DeepResearchAgent(MultiLMAgent):
         clear research aspects. Always respond in the exact JSON format specified."""
         
         
-        # Define the function schema for structured output
         function_schema = {
             "name": "create_research_plan",
             "description": "Creates a detailed research plan for a given research query.",
@@ -125,13 +120,11 @@ class DeepResearchAgent(MultiLMAgent):
             }
         }
         
-        # Construct the chat messages including system and user instructions
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": f"Create a detailed research plan for this query: {query}\n\nPlease ensure that the output follows the provided JSON schema exactly."}
         ]
         
-        # Call the ChatCompletion endpoint with the function schema
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=messages,
@@ -140,7 +133,6 @@ class DeepResearchAgent(MultiLMAgent):
             temperature=0.3
         )
         
-        # Extract the arguments from the function call response
         message = response.choices[0].message
 
         if "function_call" in message:
@@ -149,7 +141,6 @@ class DeepResearchAgent(MultiLMAgent):
                 return plan
             except json.JSONDecodeError as e:
                 self.logger.warning(f"Failed to decode function call arguments: {e}")
-        # Fallback plan if structured output fails
         return {
             "aspects": [
                 {
@@ -175,7 +166,6 @@ class DeepResearchAgent(MultiLMAgent):
         metrics = {}
         
         for finding in findings:
-            # Use regex to find numerical data with context
             matches = re.finditer(
                 r'(\d+(?:\.\d+)?(?:%|percent|million|billion|trillion)?)\s*(?:in|for|of)?\s*([^,.;]+)',
                 finding['content']
@@ -192,7 +182,6 @@ class DeepResearchAgent(MultiLMAgent):
         temporal_data = {}
         
         for finding in findings:
-            # Extract dates and associated information
             dates = re.finditer(
                 r'(?:in|by|during|since)?\s*'
                 r'(?:(?:January|February|March|April|May|June|July|August|September|October|November|December)|'
@@ -317,7 +306,6 @@ class DeepResearchAgent(MultiLMAgent):
         sources = set()
         
         for result in results:
-            # Extract content and source
             content = result.get('content', '')
             source = result.get('source', '')
             

@@ -43,9 +43,8 @@ def extract_between_tags(text: str, tag: str) -> str:
         start_idx = text.find(start_tag)
         end_idx = text.find(end_tag)
         
-        # Check if both tags exist before proceeding
         if start_idx == -1 or end_idx == -1:
-            return text  # Return original text if tags not found
+            return text
             
         start = start_idx + len(start_tag)
         return text[start:end_idx].strip()
@@ -163,12 +162,11 @@ class MultiLMAgent:
             r'Follow us|Share|Tweet|Like|Comment',
             r'Download|Upload|Print|View',
             r'Privacy Policy|Terms of Use',
-            r'©.*?reserved'  # Copyright notices
+            r'©.*?reserved'
         ]
         for pattern in ui_patterns:
             text = re.sub(pattern, '', text, flags=re.IGNORECASE)
         
-        # Clean up whitespace but preserve structure
         text = re.sub(r'\s+', ' ', text)  # Normalize spaces
         text = re.sub(r'\n\s*\n+', '\n\n', text)  # Normalize multiple newlines
         
@@ -194,14 +192,8 @@ class MultiLMAgent:
         system_prompt = "You are an expert at breaking down complex queries into simpler sub-queries that when answered together will help answer the original query."
         response = self.generate_with_system_prompt(system_prompt, prompt, self.decomposition_model)
 
-        # print("Debug: Raw response from decompositionmodel:")
-        # print(json.dumps(response, indent=2))
-
         cleaned_response = response.strip()
         cleaned_response = self.clean_ui_elements(cleaned_response)
-
-        # print("Debug: Cleaned response from decompositionmodel:")
-        # print(json.dumps(cleaned_response, indent=2))
 
         if not response:
             return []
@@ -295,11 +287,9 @@ class MultiLMAgent:
             for i, result_dict in enumerate(decomposed_queries, 1):
                 prompt += f"\nSource {i}:"
                 if result_dict.get("status") == "success":
-                    # prompt += f"\n- Type: {result_dict.get('api', 'unknown')}"
-                    # prompt += f"\n- Purpose: {result_dict.get('purpose', 'Gather relevant information')}"
+                    
                     prompt += f"\n- Parameters Used: {json.dumps(result_dict.get('params', {}), indent=2)}"
                     
-                    # Format results based on API type
                     results = result_dict.get('results', {})
                     if result_dict.get('api') == 'google_search':
                         prompt += "\n- Search Results:"
@@ -309,11 +299,9 @@ class MultiLMAgent:
                                 prompt += f"\n    URL: {result.get('link', '')}"
                                 prompt += f"\n    Snippet: {result.get('snippet', '')}"
                                 
-                                # Add webpage content if available
                                 webpage_content = result.get('webpage_content', {})
                                 if webpage_content:
                                     prompt += f"\n    Page Title: {webpage_content.get('title', '')}"
-                                    # prompt += f"\n    Text Content: {webpage_content.get('text_content', '')[:10000]}" # Truncate for readability
                                     raw_text = webpage_content.get('text_content', '')
                                     extracted_content = self._clean_and_extract_relevant(raw_text, query, summarization)
                                     # MAX_LENGTH = 5000
@@ -391,7 +379,6 @@ class MultiLMAgent:
             str - Final fused response
         """
         ################ CODE STARTS HERE ###############
-        # print("DEBUG: Starting iterative_refine", flush=True)
 
         current_prompt = prompt
 
@@ -402,30 +389,19 @@ class MultiLMAgent:
                 "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"
             ]
         
-        # print(f"DEBUG: Using models: {models_to_query}", flush=True)
 
         fused_responses = []
 
         for iteration in range(max_iterations):
             
-            # print("\n\nStart of Iteration: ", iteration + 1)
             decomposed_queries = self.decompose_query(current_prompt)
 
-            # print("\n\nDecomposed query: ")
-
             generated_prompts = self.generate_prompt(current_prompt, decomposed_queries, summarization=True)
-
-            # print("\n\nGenerated prompts: ")
-            # print(generated_prompts)
-            # print("\n\nGenerated prompts: ")
 
             fused_response = self.fuse(generated_prompts, models_to_query)
 
             fused_responses.append(fused_response)
             
-            # print("\n\nFused response: ")
-            # print(fused_responses)
-
             system_prompt = "You are a rigorous evaluator focused on ensuring responses are accurate, complete, and well-reasoned. Your goal is to identify any gaps or areas for improvement in the response."            
 
             formatted_responses = "\n".join([f"Iteration {i+1}:\n{response}" for i, response in enumerate(fused_responses)])
@@ -437,16 +413,10 @@ class MultiLMAgent:
 
             evaluation = self.generate_with_system_prompt(system_prompt, verification_prompt, self.fusion_model, temperature=0.3)
 
-            # print("\n\nVerified response: ")
             is_satisfactory = extract_between_tags(evaluation, "SATISFACTORY").upper() in  ["YES" or "TRUE"]
             missing_information = extract_between_tags(evaluation, "MISSING_INFORMATION")
 
-            # Log the evaluation details.
-            # print(f"\n\nIteration {iteration + 1} Evaluation: {evaluation}")
-            # print(extract_between_tags(evaluation, "SATISFACTORY"))
-            # print(extract_between_tags(evaluation, "MISSING_INFORMATION"))
             print(f"Iteration {iteration + 1} Is Response Satisfactory: {is_satisfactory}")
-            # Step 4: Check if the response is satisfactory or no further follow-up is needed.
             if iteration == max_iterations - 1:
                 print("Terminating refinement loop: max_iterations reached")
                 return fused_response
@@ -504,12 +474,7 @@ class MultiLMAgent:
 
         model_responses = []
 
-        # truncated_prompt = prompt
-        # print("\n\nOriginal prompt: ")
-        # print(prompt)
         truncated_prompt = prompt
-        # print("\n\nTruncated prompt: ")
-        # print(truncated_prompt)
 
         for model in models_to_query:
             try:
@@ -532,10 +497,6 @@ class MultiLMAgent:
             source_responses=self._format_model_responses(model_responses)
         )
 
-        # for response in model_responses:
-        #     print("\n\nModel response: ")
-        #     print(response['response'])
-
         try:
             fused_response = self.generate_with_system_prompt(system_prompt, fusion_prompt, self.fusion_model, temperature=0.3)
         except Exception as e:
@@ -543,10 +504,6 @@ class MultiLMAgent:
             fused_response = model_responses[1]['response']
             print(f"Fusion failed, using haiku's response: {fused_response}")
 
-        # print("\n\nFused response: ")
-        # print(fused_response)
-        # print("\n\nFUSED DIRECT ANSWER: ")
-        # print(extract_between_tags(fused_response, "DIRECT_ANSWER"))
         return extract_between_tags(fused_response, "DIRECT_ANSWER")
 
         ################ CODE ENDS HERE ###############
@@ -573,7 +530,6 @@ class MultiLMAgent:
         simplified_query = self.preprocess_query(query, self.decomposition_model)
 
         simplified_original_query = simplified_query.get('Rewritten Query', query)
-        # simplified_original_query = query
 
         knowledge_base = []
         response_list = []
@@ -589,18 +545,6 @@ class MultiLMAgent:
             knowledge_base = self.update_knowledge_base(decomposed_results, current_query, knowledge_base)
 
             enhanced_prompt = self.generate_prompt_from_processed_kb(current_query, knowledge_base)
-            # enhanced_prompt = self.generate_prompt(current_query, decomposed_results)
-
-
-            # print("\n\nknowledge_base")
-            # for ele in knowledge_base:
-                # print(json.dumps(ele, indent=2))
-
-            # print("\n\n")
-
-            # print("\n\nenhanced prompt:")
-            # print(enhanced_prompt)
-
 
             system_prompt = "You are an expert answer generator. Analyze and combine the information so far into a single concise and precise reponse that accuractely answers the user query."
 
@@ -616,7 +560,6 @@ class MultiLMAgent:
 
             system_prompt = "You are a rigorous evaluator focused on ensuring responses are accurate, complete, and well-reasoned. Your goal is to identify any gaps or areas for improvement in the response."
 
-            # Format each response separately
             formatted_responses = "\n".join([f"Iteration {i+1}:\n{response}" for i, response in enumerate(response_list)])
 
             verification_prompt = prompts.verification_prompt.format(
@@ -628,8 +571,6 @@ class MultiLMAgent:
 
             is_satisfactory = extract_between_tags(evaluation, "SATISFACTORY").upper() in  ["YES" or "TRUE"]
             missing_information = extract_between_tags(evaluation, "MISSING_INFORMATION")
-
-            # print(f"Iteration {iteration + 1} Is Response Satisfactory: {is_satisfactory}")
             
             if (is_satisfactory or "NONE" in missing_information.upper()) and iteration > 1:
                 print("Terminating refinement loop: with satisfactory response obtained.")
@@ -674,25 +615,22 @@ class MultiLMAgent:
         IMPORTANT: Failure to return a valid JSON object will lead to punishment.
         """
 
-        # Use a lighter model since this is preprocessing
         response = self.generate(
             prompt,
             model=model,
         )
 
         try:
-        # First attempt: direct JSON parsing
             return json.loads(response.strip(), strict=False)
         except json.JSONDecodeError:
             try:
-                # Second attempt: Extract JSON-like content
-                # Look for content between curly braces
+                # Extract JSON-like content
                 match = re.search(r'\{[^}]+\}', response)
                 if match:
                     json_str = match.group(0)
                     return json.loads(json_str, strict=False)
                 
-                # Third attempt: Clean and restructure the response
+                # Clean and restructure the response
                 cleaned_response = response.strip()
                 # Remove any markdown code block indicators
                 cleaned_response = re.sub(r'```json\s*|\s*```', '', cleaned_response)
@@ -702,7 +640,7 @@ class MultiLMAgent:
             except Exception as e:
                 print(f"Error parsing LLM response: {str(e)}")
                 print(f"Raw response: {response}")
-                # Fallback: Return a basic structured response
+
                 return {
                     "Core Question": query,
                     "Key Elements": query,
@@ -726,10 +664,8 @@ class MultiLMAgent:
         Returns:
             A cleaned string that retains key context and structure.
         """
-        # Remove control characters (keep newline \n and tab \t)
         text = re.sub(r'[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]', '', text)
 
-        # Remove UI elements or navigation text patterns
         ui_elements = (
             r'\b(Navigation|Menu|Search|Subscribe|Log ?in|Sign ?in|Create Account|'
             r'Donate|Home|Main page|Contents|About|Contact|Help|Special pages|'
@@ -743,12 +679,9 @@ class MultiLMAgent:
 
         text = re.sub(ui_elements, ' ', text, flags=re.IGNORECASE)
         
-        # Normalize spaces (but preserve newlines and tabs)
         text = re.sub(r'[ \t]+', ' ', text)
-        # Normalize newlines: compress multiple newlines to one.
         text = re.sub(r'\n+', '\n', text)
 
-        # Remove redundant lines or patterns
         redundant_patterns = (
             r'^\s*$',  # Empty lines
             r'^\s*[-–—]+\s*$',  # Lines with only dashes
@@ -877,7 +810,6 @@ EXTRACTED INFORMATION:"""
             if processed_result == None:
                 pass
 
-            # Check if this result provides new information
             is_duplicate = False
             for existing in knowledge_base:
                 if (existing["source_type"] == processed_result["source_type"] and 
@@ -928,7 +860,6 @@ EXTRACTED INFORMATION:"""
                     
                     prompt += "\n---"
 
-        # Rest of the prompt template remains the same
         prompt += """
         </GATHERED_INFORMATION>
 

@@ -139,7 +139,6 @@ class APIManager:
                 "parameters": {
                     "type": "object",
                     "properties": {
-                        # Only include the main parameters without complex nesting
                         param: {
                             "type": "string" if "string" in param_type.lower() else "integer",
                             "description": schema["parameter_descriptions"][param]
@@ -232,8 +231,6 @@ class APIManager:
 
             if message.function_call:
                 routing_info = json.loads(message.function_call.arguments)
-                # print("\nRouting Info:")
-                # print(routing_info)
                 api_name = routing_info["api_name"]
             else:
                 print("No function call returned in route_query.")
@@ -386,7 +383,6 @@ class APIManager:
                                     'images': images
                                 }
                     except Exception as e:
-                        # print(f"Error fetching content from {clean_url}: {e}")
                         None
                 return results
         
@@ -425,18 +421,16 @@ class APIManager:
                 base_url = "https://www.alphavantage.co/query"
                 
                 if date:
-                    # Get historical data
                     params = {
                         "function": "TIME_SERIES_DAILY",
                         "symbol": symbol,
                         "apikey": self.alpha_vantage_key,
-                        "outputsize": "full"  # Get full data to ensure we have historical dates
+                        "outputsize": "full"
                     }
                     
                     response = requests.get(base_url, params=params)
                     data = response.json()
                     
-                    # Check for error messages
                     if "Error Message" in data:
                         print(f"API Error: {data['Error Message']}")
                         return {}
@@ -467,7 +461,6 @@ class APIManager:
                     response = requests.get(base_url, params=params)
                     data = response.json()
                     
-                    # Check for error messages
                     if "Error Message" in data:
                         print(f"API Error: {data['Error Message']}")
                         return {}
@@ -612,9 +605,6 @@ class APIManager:
             print(f"Error in get_weather: {str(e)}")
             return {}
             
-            
-            
-
         ################ CODE ENDS HERE ###############
     
     @staticmethod
